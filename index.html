@@ -1,0 +1,1111 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Project: Secret Escape</title>
+    <!-- Font eleganti Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;0,700;1,400&family=Plus+Jakarta+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-dark: #0d0b12;
+            --card-bg: rgba(22, 18, 31, 0.75);
+            --border-color: rgba(212, 175, 55, 0.25);
+            --accent-gold: #e2c079;
+            --accent-rose: #e8a598;
+            --text-light: #f3f0e6;
+            --text-muted: #a099aa;
+            --success-color: #52b788;
+            --error-color: #e63946;
+            --font-title: 'Playfair Display', Georgia, serif;
+            --font-body: 'Plus Jakarta Sans', -apple-system, sans-serif;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        body {
+            background-color: var(--bg-dark);
+            color: var(--text-light);
+            font-family: var(--font-body);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            overflow-x: hidden;
+            position: relative;
+            padding: 20px;
+            touch-action: manipulation;
+        }
+
+        /* Canvas particelle di sfondo */
+        #particleCanvas {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 0;
+            pointer-events: none;
+        }
+
+        /* Container principale del gioco */
+        .game-container {
+            width: 100%;
+            max-width: 680px;
+            min-height: 520px;
+            background: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 24px;
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.6), 0 0 30px rgba(226, 192, 121, 0.05);
+            padding: 40px 30px;
+            z-index: 10;
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            transition: all 0.5s ease;
+        }
+
+        /* Schermate */
+        .screen {
+            display: none;
+            width: 100%;
+            flex-direction: column;
+            align-items: center;
+            text-align: center;
+            opacity: 0;
+            transform: translateY(15px);
+            transition: opacity 0.5s ease, transform 0.5s ease;
+        }
+
+        .screen.active {
+            display: flex;
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        /* Tipografia */
+        h1, h2 {
+            font-family: var(--font-title);
+            color: var(--accent-gold);
+            margin-bottom: 16px;
+            font-weight: 600;
+            letter-spacing: 0.5px;
+        }
+
+        h1 { font-size: 2.2rem; }
+        h2 { font-size: 1.8rem; }
+
+        p {
+            font-size: 1.1rem;
+            line-height: 1.6;
+            color: var(--text-light);
+            margin-bottom: 24px;
+            max-width: 520px;
+        }
+
+        .subtitle {
+            color: var(--text-muted);
+            font-size: 0.95rem;
+            margin-top: -10px;
+            margin-bottom: 20px;
+        }
+
+        /* Componenti comuni */
+        .btn {
+            background: linear-gradient(135deg, rgba(226, 192, 121, 0.2) 0%, rgba(232, 165, 152, 0.2) 100%);
+            border: 1px solid var(--accent-gold);
+            color: var(--text-light);
+            padding: 16px 36px;
+            border-radius: 50px;
+            font-size: 1.05rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+            min-width: 200px;
+            min-height: 54px;
+            display: inline-flex;
+            justify-content: center;
+            align-items: center;
+            margin-top: 15px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+            position: relative;
+            z-index: 50;
+            touch-action: manipulation;
+        }
+
+        .btn:active {
+            transform: scale(0.96);
+            background: linear-gradient(135deg, rgba(226, 192, 121, 0.4) 0%, rgba(232, 165, 152, 0.4) 100%);
+        }
+
+        /* Pulsanti opzioni uguali per depistaggio e quiz */
+        .options-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+            width: 100%;
+            margin-bottom: 20px;
+        }
+
+        @media (max-width: 500px) {
+            .options-grid { grid-template-columns: 1fr; }
+        }
+
+        .option-card {
+            background: rgba(255, 255, 255, 0.04);
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            border-radius: 16px;
+            padding: 18px 15px;
+            font-size: 1.05rem;
+            color: var(--text-light);
+            cursor: pointer;
+            transition: all 0.25s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 64px;
+            text-align: center;
+            touch-action: manipulation;
+        }
+
+        .option-card:active {
+            transform: scale(0.98);
+            border-color: var(--accent-gold);
+            background: rgba(226, 192, 121, 0.1);
+        }
+
+        /* Input di testo e messaggi di feedback */
+        .input-field {
+            background: rgba(0, 0, 0, 0.3);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 14px 20px;
+            color: var(--text-light);
+            font-size: 1.1rem;
+            text-align: center;
+            width: 100%;
+            max-width: 320px;
+            margin-bottom: 20px;
+            outline: none;
+            transition: border-color 0.3s ease;
+            font-family: var(--font-body);
+            -webkit-user-select: text;
+            user-select: text;
+        }
+
+        .input-field:focus {
+            border-color: var(--accent-gold);
+        }
+
+        .feedback-msg {
+            min-height: 28px;
+            font-size: 0.95rem;
+            margin-top: 10px;
+            transition: opacity 0.3s ease;
+        }
+
+        .feedback-msg.error { color: var(--error-color); }
+        .feedback-msg.success { color: var(--success-color); }
+
+        /* Lucchetto Digitale */
+        .lock-container {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 12px;
+            margin: 25px 0;
+            background: rgba(0, 0, 0, 0.25);
+            padding: 20px 25px;
+            border-radius: 20px;
+            border: 1px solid rgba(255, 255, 255, 0.08);
+        }
+
+        .digit-picker {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .digit-btn {
+            background: rgba(255, 255, 255, 0.08);
+            border: none;
+            color: var(--text-light);
+            width: 44px;
+            height: 38px;
+            border-radius: 8px;
+            font-size: 1.2rem;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            touch-action: manipulation;
+        }
+
+        .digit-btn:active { background: rgba(226, 192, 121, 0.3); }
+
+        .digit-val {
+            font-size: 2rem;
+            font-weight: 700;
+            font-family: monospace;
+            width: 44px;
+            text-align: center;
+            margin: 8px 0;
+            color: var(--accent-gold);
+        }
+
+        .lock-separator {
+            font-size: 1.8rem;
+            color: var(--text-muted);
+            font-weight: bold;
+        }
+
+        /* Gioco dei Peluche */
+        .plushie-grid {
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+            width: 100%;
+            margin: 20px 0;
+            flex-wrap: wrap;
+        }
+
+        .plushie-card {
+            background: rgba(255, 255, 255, 0.04);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 18px;
+            padding: 20px 15px;
+            width: 130px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            touch-action: manipulation;
+        }
+
+        .plushie-card:active {
+            transform: scale(0.95);
+            border-color: var(--accent-rose);
+        }
+
+        .plushie-icon {
+            font-size: 2.8rem;
+            margin-bottom: 10px;
+        }
+
+        .plushie-name {
+            font-size: 1.05rem;
+            font-weight: 600;
+        }
+
+        /* Sequenza Enigma */
+        .word-sequence {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            margin: 20px 0;
+            width: 100%;
+            max-width: 280px;
+        }
+
+        .word-item {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(212, 175, 55, 0.2);
+            padding: 12px;
+            border-radius: 10px;
+            font-weight: 600;
+            letter-spacing: 2px;
+            color: var(--accent-gold);
+        }
+
+        .word-item.blank {
+            border: 1px dashed var(--accent-rose);
+            color: var(--text-muted);
+        }
+
+        /* Animazioni */
+        .shake {
+            animation: shakeAnim 0.4s ease-in-out;
+        }
+
+        @keyframes shakeAnim {
+            0%, 100% { transform: translateX(0); }
+            20%, 60% { transform: translateX(-8px); }
+            40%, 80% { transform: translateX(8px); }
+        }
+
+        .hidden { display: none !important; }
+
+        /* SCHERMATA FINALE CON TOUCH TOTALMENTE FUNZIONANTE */
+        #screen-cinematic-reveal {
+            width: 100%;
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            position: relative;
+            z-index: 30;
+        }
+
+        #screen-cinematic-reveal.active {
+            display: flex;
+        }
+
+        .overlay-dark {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background-color: #050408;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 1.2s ease;
+            z-index: 5;
+        }
+
+        .overlay-dark.active {
+            opacity: 0.95;
+        }
+
+        .fade-step {
+            opacity: 0;
+            transform: translateY(12px);
+            transition: opacity 1s ease, transform 1s ease;
+            margin: 8px 0;
+            width: 100%;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .fade-step.visible {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        .envelope-card {
+            background: linear-gradient(145deg, rgba(28, 23, 38, 0.95), rgba(18, 14, 25, 0.98));
+            border: 1px solid rgba(226, 192, 121, 0.4);
+            border-radius: 20px;
+            padding: 35px 25px;
+            width: 100%;
+            max-width: 360px;
+            box-shadow: 0 15px 35px rgba(0, 0, 0, 0.5), 0 0 25px rgba(226, 192, 121, 0.15);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 15px;
+            transition: all 0.6s ease;
+            position: relative;
+            z-index: 60;
+        }
+
+        .envelope-card.open {
+            transform: scale(1.02);
+            border-color: var(--accent-gold);
+            box-shadow: 0 20px 45px rgba(0, 0, 0, 0.6), 0 0 40px rgba(226, 192, 121, 0.3);
+        }
+
+        .envelope-seal {
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            background: rgba(226, 192, 121, 0.15);
+            border: 1px solid var(--accent-gold);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--accent-gold);
+            font-size: 1.2rem;
+            margin-bottom: 5px;
+        }
+
+        .reveal-part-1 {
+            font-size: 1.2rem;
+            letter-spacing: 4px;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            font-weight: 500;
+        }
+
+        .reveal-part-2 {
+            font-size: 1.6rem;
+            letter-spacing: 3px;
+            color: var(--accent-rose);
+            font-family: var(--font-title);
+            margin: 4px 0;
+        }
+
+        .reveal-part-3 {
+            font-size: 2.8rem;
+            font-family: var(--font-title);
+            font-weight: 700;
+            letter-spacing: 4px;
+            color: var(--accent-gold);
+            text-shadow: 0 0 25px rgba(226, 192, 121, 0.4);
+            margin: 10px 0 20px 0;
+        }
+
+        @media (max-width: 480px) {
+            .reveal-part-3 { font-size: 2.2rem; letter-spacing: 2px; }
+        }
+
+        .quote-line {
+            font-size: 1.15rem;
+            color: var(--text-light);
+            font-style: italic;
+            margin: 4px 0;
+            line-height: 1.5;
+        }
+
+        .timeline-container {
+            width: 100%;
+            max-width: 420px;
+            margin-top: 25px;
+            padding: 20px 15px;
+            background: rgba(0, 0, 0, 0.4);
+            border: 1px solid rgba(226, 192, 121, 0.2);
+            border-radius: 16px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .timeline-item {
+            font-size: 0.95rem;
+            color: var(--text-light);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .timeline-arrow {
+            color: var(--accent-gold);
+            font-size: 0.8rem;
+            opacity: 0.6;
+        }
+    </style>
+</head>
+<body>
+
+    <canvas id="particleCanvas"></canvas>
+    <div id="darkOverlay" class="overlay-dark"></div>
+
+    <div class="game-container">
+
+        <!-- 1. INTRO -->
+        <div id="screen-intro" class="screen active">
+            <h1>Project: Secret Escape</h1>
+            <p class="subtitle">Un'esperienza interattiva riservata</p>
+            <p>Ho preparato un piccolo percorso speciale per te. Ma prima di scoprire dove ci porterà, devi dimostrare di conoscere davvero i nostri dettagli e ricordi.</p>
+            <button class="btn" onclick="nextScreen('screen-depistaggio')">Inizia la sfida</button>
+        </div>
+
+        <!-- 2. DEPISTAGGIO -->
+        <div id="screen-depistaggio" class="screen">
+            <h2>Prima Domanda</h2>
+            <p>Secondo te, cosa ti ho regalato?</p>
+            <div class="options-grid">
+                <div class="option-card" onclick="selectDepistaggio('gioiello')">💎 Gioiello</div>
+                <div class="option-card" onclick="selectDepistaggio('borsa')">👜 Borsa</div>
+                <div class="option-card" onclick="selectDepistaggio('paracadutismo')">🪂 Paracadutismo</div>
+                <div class="option-card" onclick="selectDepistaggio('cucina')">👩‍🍳 Corso di cucina</div>
+            </div>
+            <div id="depistaggio-feedback" class="feedback-msg"></div>
+            <button id="depistaggio-next" class="btn hidden" onclick="nextScreen('screen-lock')">Continua</button>
+        </div>
+
+        <!-- 3. LUCCHETTO DATE -->
+        <div id="screen-lock" class="screen">
+            <h2>Il Primo Bacio</h2>
+            <p>Per sbloccare il lucchetto, imposta la combinazione del giorno e del mese in cui ci siamo baciati per la prima volta.</p>
+
+            <div class="lock-container">
+                <div class="digit-picker">
+                    <button class="digit-btn" onclick="changeDigit(0, 1)">▲</button>
+                    <div id="d0" class="digit-val">0</div>
+                    <button class="digit-btn" onclick="changeDigit(0, -1)">▼</button>
+                </div>
+                <div class="digit-picker">
+                    <button class="digit-btn" onclick="changeDigit(1, 1)">▲</button>
+                    <div id="d1" class="digit-val">0</div>
+                    <button class="digit-btn" onclick="changeDigit(1, -1)">▼</button>
+                </div>
+                <div class="lock-separator">/</div>
+                <div class="digit-picker">
+                    <button class="digit-btn" onclick="changeDigit(2, 1)">▲</button>
+                    <div id="d2" class="digit-val">0</div>
+                    <button class="digit-btn" onclick="changeDigit(2, -1)">▼</button>
+                </div>
+                <div class="digit-picker">
+                    <button class="digit-btn" onclick="changeDigit(3, 1)">▲</button>
+                    <div id="d3" class="digit-val">0</div>
+                    <button class="digit-btn" onclick="changeDigit(3, -1)">▼</button>
+                </div>
+            </div>
+
+            <div id="lock-feedback" class="feedback-msg"></div>
+            <button class="btn" onclick="checkLock()">Sblocca Lucchetto</button>
+        </div>
+
+        <!-- 4. GIOCO DEI PELUCHE -->
+        <div id="screen-plushies" class="screen">
+            <h2>Chi c'è da più tempo?</h2>
+            <p>Tra i nostri compagni di viaggio... chi è con noi da più tempo?</p>
+
+            <div id="plushie-container" class="plushie-grid"></div>
+
+            <div id="plushie-feedback" class="feedback-msg"></div>
+            <button id="plushie-next" class="btn hidden" onclick="nextScreen('screen-oc')">Continua</button>
+        </div>
+
+        <!-- 5. SERIE TV - THE O.C. -->
+        <div id="screen-oc" class="screen">
+            <h2>Serate sul Divano</h2>
+            <p>Qual è la nostra serie TV preferita per eccellenza, quella che abbiamo visto e amato insieme?</p>
+            <div id="oc-options" class="options-grid"></div>
+            <div id="oc-feedback" class="feedback-msg"></div>
+            <button id="oc-next" class="btn hidden" onclick="nextScreen('screen-figli')">Continua</button>
+        </div>
+
+        <!-- 6. FIGLI DI PAPÀ -->
+        <div id="screen-figli" class="screen">
+            <h2>I Figli di Papà</h2>
+            <p>Rimanendo in tema... Sai cosa mi piace dei "Figli di papà"?</p>
+            <input type="text" id="figli-input" class="input-field" placeholder="Scrivi la risposta..." autocomplete="off">
+            <div id="figli-feedback" class="feedback-msg"></div>
+            <button class="btn" onclick="checkFigli()">Invia Risposta</button>
+        </div>
+
+        <!-- 7. TELEFONINO -->
+        <div id="screen-phone" class="screen">
+            <h2>Una Domanda di Produzione</h2>
+            <p>Vediamo se ti ricordi questo dettaglio fondamentale... Chi ha prodotto il tuo telefonino?</p>
+            <div id="phone-options" class="options-grid">
+                <div class="option-card" onclick="checkPhone(this, false)">Apple</div>
+                <div class="option-card" onclick="checkPhone(this, false)">Samsung</div>
+                <div class="option-card" onclick="checkPhone(this, true)">Le manine di un bambino</div>
+            </div>
+            <div id="phone-feedback" class="feedback-msg"></div>
+            <button id="phone-next" class="btn hidden" onclick="nextScreen('screen-bbc')">Continua</button>
+        </div>
+
+        <!-- 8. LA BBC -->
+        <div id="screen-bbc" class="screen">
+            <h2>Sigle e Leggende</h2>
+            <p>Per cosa sta l'acronimo storico "BBC"?</p>
+            <div class="options-grid">
+                <div class="option-card" onclick="checkBBC(this, false)">British Broadcasting Corporation</div>
+                <div class="option-card" onclick="checkBBC(this, true)">Barzagli, Bonucci, Chiellini</div>
+                <div class="option-card" onclick="checkBBC(this, false)">Bologna, Brescia, Cremona</div>
+                <div class="option-card" onclick="checkBBC(this, false)">Baci, Coccole, Caffè</div>
+            </div>
+            <div id="bbc-feedback" class="feedback-msg"></div>
+            <button id="bbc-next" class="btn hidden" onclick="nextScreen('screen-fake-end')">Continua</button>
+        </div>
+
+        <!-- 9. FALSO FINALE -->
+        <div id="screen-fake-end" class="screen">
+            <h1>Missione Completata!</h1>
+            <p>Bravissima! Hai risposto a tutte le domande e sbloccato tutti i ricordi.</p>
+            <p style="color: var(--accent-gold); font-size: 1.2rem; font-weight: 600;">Il tuo premio: 1.000 grattini e una pizza a scelta stasera!</p>
+            <button class="btn" onclick="triggerFakeSurprise()">Riscatta Premio</button>
+        </div>
+
+        <!-- 10. INTERRUZIONE MISTERIOSA -->
+        <div id="screen-wait" class="screen">
+            <h2>Aspetta un attimo...</h2>
+            <p>Pensavi fosse davvero tutto qui?</p>
+            <p class="subtitle">C'è un ultimo sigillo da spezzare.</p>
+            <button class="btn" onclick="nextScreen('screen-four-words')">Affronta l'ultimo enigma</button>
+        </div>
+
+        <!-- 11. ENIGMA FINALE -->
+        <div id="screen-four-words" class="screen">
+            <h2>L'Ultimo Enigma</h2>
+            <p>Quattro parole. Una sola manca.</p>
+
+            <div class="word-sequence">
+                <div class="word-item">ACQUA</div>
+                <div class="word-item">CALORE</div>
+                <div class="word-item">RELAX</div>
+                <div class="word-item blank">? ? ? ? ?</div>
+            </div>
+
+            <p class="subtitle">Quale parola completa la sequenza?</p>
+            <input type="text" id="words-input" class="input-field" placeholder="Scrivi la parola..." autocomplete="off">
+            <div id="words-feedback" class="feedback-msg"></div>
+            <button class="btn" onclick="checkFourWords()">Continua</button>
+        </div>
+
+        <!-- 12. TRANSIZIONE NARRATIVA -->
+        <div id="screen-story-trans" class="screen">
+            <h2 id="story-line-1">...</h2>
+            <p id="story-line-2" style="font-style: italic; font-size: 1.2rem;"></p>
+            <p id="story-line-3" class="subtitle"></p>
+            <button id="story-next" class="btn hidden" onclick="revealGrandPrize()">Scopri la verità</button>
+        </div>
+
+        <!-- 13. RIVELAZIONE FINALE CORRETTA E INTERATTIVA -->
+        <div id="screen-cinematic-reveal">
+            
+            <!-- FASE 2: Missione Completata -->
+            <div id="phase-mission" class="fade-step">
+                <h2 style="font-size: 1.8rem; letter-spacing: 2px;">HAI COMPLETATO LA MISSIONE.</h2>
+                <p id="phase-mission-sub1" class="fade-step subtitle" style="font-size: 1.1rem; margin-top: 10px;">O forse no.</p>
+                <p id="phase-mission-sub2" class="fade-step" style="color: var(--accent-gold); font-size: 1.15rem;">C'è ancora un'ultima cosa da scoprire.</p>
+            </div>
+
+            <!-- FASE 3: Busta Elegante -->
+            <div id="phase-envelope" class="fade-step">
+                <div id="envelopeCard" class="envelope-card">
+                    <div class="envelope-seal">✧</div>
+                    <p class="subtitle" style="letter-spacing: 3px; font-size: 0.85rem; margin: 0; color: var(--accent-gold);">ULTIMO MESSAGGIO</p>
+                    <button id="openEnvelopeBtn" class="btn" onclick="openEnvelope()" style="margin-top: 5px; position: relative; z-index: 100;">APRI</button>
+                </div>
+            </div>
+
+            <!-- FASE 4-8: Rivelazione e Messaggi -->
+            <div id="phase-gift" class="fade-step">
+                <p id="gift-intro" class="fade-step subtitle" style="font-size: 1.05rem; letter-spacing: 1px;">Tutti gli indizi portavano qui.</p>
+                
+                <div id="gift-pass-1" class="fade-step reveal-part-1">UN WEEKEND</div>
+                <div id="gift-pass-2" class="fade-step reveal-part-2">ALLE TERME</div>
+                <div id="gift-pass-3" class="fade-step reveal-part-3">MONTEGROTTO</div>
+
+                <div id="gift-quote-1" class="fade-step quote-line" style="margin-top: 10px;">Questa volta il regalo non è qualcosa da scartare.</div>
+                <div id="gift-quote-2" class="fade-step quote-line" style="color: var(--accent-gold); font-weight: 500;">È qualcosa da vivere insieme.</div>
+
+                <div id="final-block" class="fade-step" style="margin-top: 25px; max-width: 480px;">
+                    <p class="subtitle" style="font-size: 0.95rem; margin-bottom: 6px;">Sei arrivata fin qui pensando che dovessi indovinare un regalo.</p>
+                    <p class="subtitle" style="font-size: 0.95rem; margin-bottom: 6px;">In realtà dovevi solo arrivare alla fine.</p>
+                    <p class="subtitle" style="font-size: 0.95rem; margin-bottom: 12px;">Perché questa volta non volevo regalarti qualcosa.</p>
+                    <p style="font-size: 1.3rem; color: var(--accent-rose); font-family: var(--font-title); font-weight: 600;">Volevo regalarti un ricordo.</p>
+                </div>
+
+                <div id="closure-block" class="fade-step" style="margin-top: 20px;">
+                    <h2 style="font-size: 2rem; color: var(--accent-gold);">Ci vediamo a Montegrotto. ❤️</h2>
+                    <p class="subtitle" style="font-size: 0.85rem; letter-spacing: 2px; margin-top: 8px;">♨️ RELAX · ACQUA · TEMPO INSIEME</p>
+                </div>
+
+                <div id="timeline-btn-block" class="fade-step" style="margin-top: 15px;">
+                    <button class="btn" onclick="toggleTimeline()" style="min-height: 44px; padding: 10px 24px; font-size: 0.9rem; background: rgba(255,255,255,0.05); border-color: rgba(226, 192, 121, 0.4);">Rivivi il percorso</button>
+                </div>
+
+                <!-- FASE 9: Timeline della Missione -->
+                <div id="timeline-container" class="timeline-container hidden">
+                    <div class="timeline-item"><span style="color: var(--accent-gold);">04/10</span> Primo bacio</div>
+                    <div class="timeline-arrow">↓</div>
+                    <div class="timeline-item">Pimpi · Stitch · Angel</div>
+                    <div class="timeline-arrow">↓</div>
+                    <div class="timeline-item">The O.C.</div>
+                    <div class="timeline-arrow">↓</div>
+                    <div class="timeline-item">Figli di papà · Telefonino · BBC</div>
+                    <div class="timeline-arrow">↓</div>
+                    <div class="timeline-item" style="color: var(--accent-rose);">ULTIMO ENIGMA</div>
+                    <div class="timeline-arrow">↓</div>
+                    <div class="timeline-item" style="font-family: var(--font-title); color: var(--accent-gold); font-size: 1.1rem; font-weight: bold;">MONTEGROTTO</div>
+                </div>
+            </div>
+
+        </div>
+
+    </div>
+
+    <script>
+        const digits = [0, 0, 0, 0];
+
+        // Canvas Particelle
+        const canvas = document.getElementById('particleCanvas');
+        const ctx = canvas.getContext('2d');
+        let particles = [];
+
+        function resizeCanvas() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+        }
+
+        window.addEventListener('resize', resizeCanvas);
+        resizeCanvas();
+
+        class Particle {
+            constructor() {
+                this.x = Math.random() * canvas.width;
+                this.y = Math.random() * canvas.height;
+                this.size = Math.random() * 2 + 0.5;
+                this.speedX = (Math.random() - 0.5) * 0.4;
+                this.speedY = (Math.random() - 0.5) * 0.4;
+                this.opacity = Math.random() * 0.5 + 0.2;
+            }
+            update() {
+                this.x += this.speedX;
+                this.y += this.speedY;
+                if (this.x < 0) this.x = canvas.width;
+                if (this.x > canvas.width) this.x = 0;
+                if (this.y < 0) this.y = canvas.height;
+                if (this.y > canvas.height) this.y = 0;
+            }
+            draw() {
+                ctx.fillStyle = `rgba(226, 192, 121, ${this.opacity})`;
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+                ctx.fill();
+            }
+        }
+
+        for (let i = 0; i < 50; i++) particles.push(new Particle());
+
+        function animateParticles() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            particles.forEach(p => { p.update(); p.draw(); });
+            requestAnimationFrame(animateParticles);
+        }
+        animateParticles();
+
+        // Navigazione
+        function nextScreen(screenId) {
+            const activeScreen = document.querySelector('.screen.active');
+            if (activeScreen) {
+                activeScreen.style.opacity = '0';
+                activeScreen.style.transform = 'translateY(-15px)';
+                setTimeout(() => {
+                    activeScreen.classList.remove('active');
+                    const next = document.getElementById(screenId);
+                    if (next) {
+                        next.classList.add('active');
+                        setTimeout(() => {
+                            next.style.opacity = '1';
+                            next.style.transform = 'translateY(0)';
+                        }, 50);
+                    }
+                }, 400);
+            }
+        }
+
+        // Depistaggio
+        function selectDepistaggio(choice) {
+            const feedback = document.getElementById('depistaggio-feedback');
+            const btn = document.getElementById('depistaggio-next');
+            let msg = "";
+
+            if (choice === 'gioiello') {
+                msg = "Un gioiello? Diciamo che hai scelto qualcosa di un po' più difficile da mettere in una scatolina...";
+            } else if (choice === 'borsa') {
+                msg = "Una borsa? Ci avevi quasi creduto, eh! Ma questa volta il regalo non ci sta proprio dentro.";
+            } else if (choice === 'paracadutismo') {
+                msg = "Paracadutismo? Tranquilla, non ti avrei mai fatto scoprire il regalo lanciandoti da un aereo!";
+            } else if (choice === 'cucina') {
+                msg = "Un corso di cucina? Prometto che questa volta non dovrai cucinare proprio niente.";
+            }
+
+            feedback.className = "feedback-msg success";
+            feedback.innerText = msg;
+            btn.classList.remove('hidden');
+        }
+
+        // Lucchetto
+        function changeDigit(index, delta) {
+            digits[index] = (digits[index] + delta + 10) % 10;
+            document.getElementById(`d${index}`).innerText = digits[index];
+        }
+
+        function checkLock() {
+            const code = digits.join('');
+            const feedback = document.getElementById('lock-feedback');
+            if (code === "0410") {
+                feedback.className = "feedback-msg success";
+                feedback.innerText = "Lucchetto sbloccato! Il nostro primo bacio (04/10)...";
+                setTimeout(() => nextScreen('screen-plushies'), 1200);
+            } else {
+                feedback.className = "feedback-msg error";
+                feedback.innerText = "Combinazione errata. Pensa al giorno e mese del primo bacio!";
+                const container = document.querySelector('.lock-container');
+                container.classList.add('shake');
+                setTimeout(() => container.classList.remove('shake'), 400);
+            }
+        }
+
+        // Peluche
+        function initPlushies() {
+            const items = [
+                { id: 'pimpi', name: 'Pimpi', icon: '🐷', correct: true },
+                { id: 'stitch', name: 'Stitch', icon: '💙', correct: false },
+                { id: 'angel', name: 'Angel', icon: '🩷', correct: false }
+            ];
+
+            for (let i = items.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [items[i], items[j]] = [items[j], items[i]];
+            }
+
+            const container = document.getElementById('plushie-container');
+            container.innerHTML = '';
+            items.forEach(item => {
+                const card = document.createElement('div');
+                card.className = 'plushie-card';
+                card.onclick = () => selectPlushie(item.correct, card);
+                card.innerHTML = `<div class="plushie-icon">${item.icon}</div><div class="plushie-name">${item.name}</div>`;
+                container.appendChild(card);
+            });
+        }
+
+        function selectPlushie(isCorrect, element) {
+            const feedback = document.getElementById('plushie-feedback');
+            const btn = document.getElementById('plushie-next');
+            if (isCorrect) {
+                feedback.className = "feedback-msg success";
+                feedback.innerText = "Esatto! Pimpi è con noi da più tempo di tutti!";
+                btn.classList.remove('hidden');
+            } else {
+                feedback.className = "feedback-msg error";
+                feedback.innerText = "Uhm, no! Lui è arrivato dopo. Riprova!";
+                element.classList.add('shake');
+                setTimeout(() => element.classList.remove('shake'), 400);
+            }
+        }
+
+        // The O.C.
+        function initOC() {
+            const options = [
+                { text: "Friends", correct: false },
+                { text: "The O.C.", correct: true },
+                { text: "One Tree Hill", correct: false },
+                { text: "Shameless", correct: false }
+            ];
+            options.sort(() => Math.random() - 0.5);
+
+            const container = document.getElementById('oc-options');
+            container.innerHTML = '';
+            options.forEach(opt => {
+                const card = document.createElement('div');
+                card.className = 'option-card';
+                card.innerText = opt.text;
+                card.onclick = () => {
+                    const feedback = document.getElementById('oc-feedback');
+                    const btn = document.getElementById('oc-next');
+                    if (opt.correct) {
+                        feedback.className = "feedback-msg success";
+                        feedback.innerText = "Californiaaa! Esatto, The O.C.!";
+                        btn.classList.remove('hidden');
+                    } else {
+                        feedback.className = "feedback-msg error";
+                        feedback.innerText = "Bella serie, ma non è la nostra preferita in assoluto!";
+                        card.classList.add('shake');
+                        setTimeout(() => card.classList.remove('shake'), 400);
+                    }
+                };
+                container.appendChild(card);
+            });
+        }
+
+        // Figli di Papà
+        function checkFigli() {
+            const input = document.getElementById('figli-input').value.trim().toLowerCase();
+            const feedback = document.getElementById('figli-feedback');
+            if (input === 'niente') {
+                feedback.className = "feedback-msg success";
+                feedback.innerText = "Esatto: NIENTE! Risposta perfetta. 😉";
+                setTimeout(() => nextScreen('screen-phone'), 1200);
+            } else {
+                feedback.className = "feedback-msg error";
+                feedback.innerText = "Sbagliato! La risposta corretta è una parola sola...";
+                document.getElementById('figli-input').classList.add('shake');
+                setTimeout(() => document.getElementById('figli-input').classList.remove('shake'), 400);
+            }
+        }
+
+        // Telefonino
+        function checkPhone(element, isCorrect) {
+            const feedback = document.getElementById('phone-feedback');
+            const btn = document.getElementById('phone-next');
+            if (isCorrect) {
+                feedback.className = "feedback-msg success";
+                feedback.innerText = "Esatto! Proprio quelle... 📱";
+                btn.classList.remove('hidden');
+            } else {
+                feedback.className = "feedback-msg error";
+                feedback.innerText = "Risposta formale sbagliata! Pensa alla nostra battuta...";
+                element.classList.add('shake');
+                setTimeout(() => element.classList.remove('shake'), 400);
+            }
+        }
+
+        // BBC
+        function checkBBC(element, isCorrect) {
+            const feedback = document.getElementById('bbc-feedback');
+            const btn = document.getElementById('bbc-next');
+            if (isCorrect) {
+                feedback.className = "feedback-msg success";
+                feedback.innerText = "Muro difensivo imbattibile: Barzagli, Bonucci, Chiellini!";
+                btn.classList.remove('hidden');
+            } else {
+                feedback.className = "feedback-msg error";
+                feedback.innerText = "No! Pensa al mondo dello sport!";
+                element.classList.add('shake');
+                setTimeout(() => element.classList.remove('shake'), 400);
+            }
+        }
+
+        function triggerFakeSurprise() {
+            nextScreen('screen-wait');
+        }
+
+        // Enigma finale
+        function checkFourWords() {
+            const val = document.getElementById('words-input').value.trim().toLowerCase();
+            if (val === '') {
+                const feedback = document.getElementById('words-feedback');
+                feedback.className = "feedback-msg error";
+                feedback.innerText = "Inserisci una parola per continuare.";
+                return;
+            }
+
+            const l1 = document.getElementById('story-line-1');
+            const l2 = document.getElementById('story-line-2');
+            const l3 = document.getElementById('story-line-3');
+
+            if (val === 'terme') {
+                l1.innerText = "Esatto.";
+                l2.innerText = "Forse hai capito dove sto cercando di portarti...";
+                l3.innerText = "Ma ormai non importa più.";
+            } else {
+                l1.innerText = "Interessante risposta...";
+                l2.innerText = "Forse hai capito qualcosa.";
+                l3.innerText = "Ma ormai non importa più.";
+            }
+
+            nextScreen('screen-story-trans');
+            setTimeout(() => {
+                document.getElementById('story-next').classList.remove('hidden');
+            }, 1000);
+        }
+
+        // --- SCHERMATA FINALE CINEMATOGRAFICA E INTERATTIVA ---
+        function revealGrandPrize() {
+            const activeScreen = document.querySelector('.screen.active');
+            if (activeScreen) {
+                activeScreen.style.opacity = '0';
+                activeScreen.style.transform = 'translateY(-15px)';
+                setTimeout(() => {
+                    activeScreen.classList.remove('active');
+                }, 400);
+            }
+
+            // Oscuramento di sfondo
+            const overlay = document.getElementById('darkOverlay');
+            overlay.classList.add('active');
+
+            setTimeout(() => {
+                const revealScreen = document.getElementById('screen-cinematic-reveal');
+                revealScreen.classList.add('active');
+
+                // FASE 2: Missione completata
+                setTimeout(() => {
+                    document.getElementById('phase-mission').classList.add('visible');
+                    
+                    setTimeout(() => {
+                        document.getElementById('phase-mission-sub1').classList.add('visible');
+                    }, 1200);
+
+                    setTimeout(() => {
+                        document.getElementById('phase-mission-sub2').classList.add('visible');
+                    }, 2600);
+
+                    // FASE 3: Busta Elegante con pulsante APRI
+                    setTimeout(() => {
+                        document.getElementById('phase-envelope').classList.add('visible');
+                    }, 4000);
+
+                }, 500);
+
+            }, 600);
+        }
+
+        // FASE 4: Apertura Busta al Clic
+        function openEnvelope() {
+            const btn = document.getElementById('openEnvelopeBtn');
+            const card = document.getElementById('envelopeCard');
+            
+            btn.style.pointerEvents = 'none';
+            btn.style.opacity = '0.5';
+            card.classList.add('open');
+
+            setTimeout(() => {
+                document.getElementById('phase-mission').style.display = 'none';
+                document.getElementById('phase-envelope').style.display = 'none';
+
+                // FASE 5: Rivelazione progressiva
+                const giftPhase = document.getElementById('phase-gift');
+                giftPhase.classList.add('visible');
+
+                setTimeout(() => {
+                    document.getElementById('gift-intro').classList.add('visible');
+                }, 300);
+
+                setTimeout(() => {
+                    document.getElementById('gift-pass-1').classList.add('visible');
+                }, 1500);
+
+                setTimeout(() => {
+                    document.getElementById('gift-pass-2').classList.add('visible');
+                }, 2800);
+
+                setTimeout(() => {
+                    document.getElementById('gift-pass-3').classList.add('visible');
+                }, 4200);
+
+                // FASE 6: Frase sotto la destinazione
+                setTimeout(() => {
+                    document.getElementById('gift-quote-1').classList.add('visible');
+                }, 5800);
+
+                setTimeout(() => {
+                    document.getElementById('gift-quote-2').classList.add('visible');
+                }, 7200);
+
+                // FASE 7: Messaggio finale
+                setTimeout(() => {
+                    document.getElementById('final-block').classList.add('visible');
+                }, 8800);
+
+                // FASE 8: Chiusura e timeline
+                setTimeout(() => {
+                    document.getElementById('closure-block').classList.add('visible');
+                    document.getElementById('timeline-btn-block').classList.add('visible');
+                }, 10500);
+
+            }, 600);
+        }
+
+        // FASE 9: Timeline
+        function toggleTimeline() {
+            const container = document.getElementById('timeline-container');
+            if (container.classList.contains('hidden')) {
+                container.classList.remove('hidden');
+                container.scrollIntoView({ behavior: 'smooth' });
+            } else {
+                container.classList.add('hidden');
+            }
+        }
+
+        window.onload = () => {
+            initPlushies();
+            initOC();
+        };
+    </script>
+</body>
+</html>
